@@ -1,12 +1,15 @@
+typedef unsigned long ul;
+typedef unsigned int ui;
+
 const int pin_buttons[] = {2, 4, 5, 6};
 const int pin_wires[] = {15, 16, 17, 18, 19};
 const int pin_LEDs[] = {7, 14}; // Buttons, Wires
 const int pin_line[] = {8, 9};
-const int pin_7seg[] = {10, 11, 12, 13};
+const int pin_7seg[] = {10, 13, 12, 11};
 const int pin_speaker = 3;
 
 const int timelimit = 599;
-const int dt = 10;
+const int dt = 1;
 
 void setup() {
   for (int i = 0; i < 4; i++) pinMode(pin_buttons[i], INPUT_PULLUP);
@@ -15,6 +18,7 @@ void setup() {
   for (int i = 0; i < 2; i++) pinMode(pin_line[i], OUTPUT);
   for (int i = 0; i < 4; i++) pinMode(pin_7seg[i], OUTPUT);
   pinMode(pin_speaker, OUTPUT);
+  Serial.begin(9600);
 
   Serial.println("b0\tb1\tb2\tb3\tw0\tw1\tw2\tw3\tw4");
 }
@@ -23,15 +27,19 @@ void write7seg(int n) {
   for (int i = 0; i < 4; i++) digitalWrite(pin_7seg[i], (n >> i) & 1);
 }
 
-int cnt = 0;
+ui cnt = 0;
 bool cleared[] = {false, false};
 void loop() {
-  int timeLeft = timelimit - millis() / 1000;
-  int timeLeftMinutes = timeLeft / 60;
-  int timeLeftSeconds = timeLeft % 60;
+  int timeLeft = 0, timeLeftMinutes = 0, timeLeftSeconds = 0;
+  if (millis() / 1000 > timelimit) {
+    timeLeft = timelimit - millis() / 1000;
+    timeLeftMinutes = timeLeft / 60;
+    timeLeftSeconds = timeLeft % 60;
+  }
 
   if (cnt * dt % 1000 == 0) { // every 1000 ms
     int value;
+    Serial.println(String(timeLeftMinutes) + ":" + String(timeLeftSeconds));
     for (int i = 0; i < 4; i++) {
       value = digitalRead(pin_buttons[i]);
       Serial.print(value + "\t");
@@ -48,9 +56,10 @@ void loop() {
   for (int i = 0; i < 2; i++) digitalWrite(pin_line[i], (cnt >> i) & 1);
 
   if (cnt % 4 == 0) write7seg(timeLeftMinutes);
-  else if (cnt % 4 == 1) write7seg(7); // display ":"
+  else if (cnt % 4 == 1) write7seg(2); // display ":"
   else if (cnt % 4 == 2) write7seg(timeLeftSeconds / 10);
-  else write7seg(timeLeftSeconds % 10);
+  else if (cnt % 4 == 3) write7seg(timeLeftSeconds % 10);
+  else write7seg(0);
 
   cnt++;
 
