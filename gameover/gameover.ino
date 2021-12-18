@@ -45,13 +45,7 @@ void ug(int f, float len, float rit = 0) {
   delay(60.0 / a / len * 1000);
 }
 
-void setup() {
-  pinMode(pin_speaker, OUTPUT);
-  Serial.begin(9600);
-  
-  TCCR2A = _BV(COM2B1) | _BV(WGM21) | _BV(WGM20);
-  TCCR2B = _BV(CS20);
-
+void gameover() {
   ug(NOTE_C5, 4);
   ug(0, 8);
   ug(NOTE_G4, 8);
@@ -72,6 +66,16 @@ void setup() {
   ug(NOTE_E4, 4);
   
   ug(0, 4);
+}
+
+void setup() {
+  pinMode(pin_speaker, OUTPUT);
+  Serial.begin(9600);
+  
+  TCCR2A = _BV(COM2B1) | _BV(WGM21) | _BV(WGM20);
+  TCCR2B = _BV(CS20);
+
+  gameover();
 }
 
 void loop() {
