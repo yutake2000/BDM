@@ -30,8 +30,10 @@ const int pin_line[] = {8, 9};
 const int pin_7seg[] = {13, 10, 11, 12};
 const int pin_speaker = 3;
 
-const int timelimit = 5; //600;
+const ul timelimit = 600;
 const int dt = 1;
+
+const bool mute = true;
 
 ui cnt = 0;
 bool cleared[] = {false, false};
@@ -52,7 +54,7 @@ void setup() {
 void ug(int f, float len, float rit = 0) {
   float static a = 45;
   if (f == 0) noTone(3);
-  else tone(pin_speaker, f); 
+  else if (!mute) tone(pin_speaker, f); 
   a -= rit;
   Scheduler.delay(60.0 / a / len * 1000);
 }
@@ -117,8 +119,50 @@ void gameover() {
   
 }
 
+void blinkLED(int pin) {
+  digitalWrite(pin, 1);
+  Scheduler.delay(100);
+  digitalWrite(pin, 0);
+}
+
 int lastTimeLeft = 0;
 int timeLeft = 0;
+
+byte lastData[] = {0, 0};
+
+void readModuleData() {
+  for (int i=0; i<2; i++) {
+    byte data = myShiftIn(pin_sr_data[i], pin_sr_clk, pin_sr_load[i]);
+    byte id = data >> 6;
+    byte flags = data & 0b111111;
+
+    /*
+    Serial.print("Module" + String(i) + ": ");
+    for (int j=0; j<8; j++) {
+      Serial.print(String((data >> (7-j)) & 1));
+    }
+    Serial.println();
+    */
+
+    switch(id) {
+      case 0: // wires
+        if (flags == 0b111011) {
+          cleared[i] = true;
+        }
+      break;
+      case 1: // buttons
+        if (flags == 0b110100) {
+          cleared[i] = true;
+        }
+        if (lastData[i] & (lastData[i] ^ data)) { // negedge data[x]
+          Scheduler.start(blinkLED, pin_LEDs[i]);
+        }
+      break;
+    }
+
+    lastData[i] = data;
+  }
+}
 
 void loop() {
 
@@ -137,44 +181,24 @@ void loop() {
       gameover();
     }
 
+    if (cnt % 100 == 0) {
+      readModuleData();
+    }
+
     if (timeLeft != lastTimeLeft) { // every 1000 ms
       int value;
       byte data;
       Serial.println(String(timeLeftMinutes) + ":" + String(timeLeftSeconds));
-
-      for (int i=0; i<2; i++) {
-        byte data = myShiftIn(pin_sr_data[i], pin_sr_clk, pin_sr_load[i]);
-        byte id = data >> 6;
-        byte flags = data & 0b111111;
-        
-        Serial.print("Module" + String(i) + ": ");
-        for (int j=0; j<8; j++) {
-          Serial.print(String((data >> (7-j)) & 1));
-        }
-        Serial.println();
-
-        switch(data>>6) {
-          case 0:
-            if (flags == 0b111011) {
-              cleared[i] = true;
-            }
-          break;
-          case 1:
-            if (flags == 0b110100) {
-              cleared[i] = true;
-            }
-          break;
-        }
-        
-      }
       
-      Scheduler.start(playSoundTick);
+      if (!mute) Scheduler.start(playSoundTick);
       //cnt += 100;
     }
 
   }
   
-  for (int i = 0; i < 2; i++) digitalWrite(pin_LEDs[i], cleared[i]);
+  for (int i = 0; i < 2; i++) {
+    if (cleared[i]) digitalWrite(pin_LEDs[i], cleared[i]);
+  }
 
   for (int i = 0; i < 2; i++) digitalWrite(pin_line[i], (cnt >> i) & 1);
 
