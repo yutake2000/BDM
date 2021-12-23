@@ -14,17 +14,21 @@
 #define NOTE_CS5 554
 #define NOTE_D5  587
 
+#define NOTE_C8  4186
+
 typedef unsigned long ul;
 typedef unsigned int ui;
 
-const int pin_buttons[] = {2, 4, 5, 6};
-const int pin_wires[] = {15, 16, 17, 18, 19};
-const int pin_LEDs[] = {7, 14}; // Buttons, Wires
+const int pin_mode = A0;
+const int pin_sr_data[] = {A3, A2};
+const int pin_sr_clk = 7;
+const int pin_sr_load[] = {5, 6};
+const int pin_LEDs[] = {2, 4}; // Buttons, Wires
 const int pin_line[] = {8, 9};
-const int pin_7seg[] = {10, 13, 12, 11};
+const int pin_7seg[] = {13, 10, 11, 12};
 const int pin_speaker = 3;
 
-const int timelimit = 599;
+const int timelimit = 20; //599;
 const int dt = 1;
 
 ui cnt = 0;
@@ -32,15 +36,15 @@ bool cleared[] = {false, false};
 bool flagGameover = false;
 
 void setup() {
-  for (int i = 0; i < 4; i++) pinMode(pin_buttons[i], INPUT_PULLUP);
-  for (int i = 0; i < 5; i++) pinMode(pin_wires[i], INPUT_PULLUP);
+  pinMode(pin_sr_clk, OUTPUT);
+  for (int i=0; i<2; i++) pinMode(pin_sr_data[i], INPUT);
+  for (int i=0; i<2; i++) pinMode(pin_sr_load[i], OUTPUT);
+  
   for (int i = 0; i < 2; i++) pinMode(pin_LEDs[i], OUTPUT);
   for (int i = 0; i < 2; i++) pinMode(pin_line[i], OUTPUT);
   for (int i = 0; i < 4; i++) pinMode(pin_7seg[i], OUTPUT);
   pinMode(pin_speaker, OUTPUT);
   Serial.begin(9600);
-
-  Serial.println("b0\tb1\tb2\tb3\tw0\tw1\tw2\tw3\tw4");
 }
 
 void ug(int f, float len, float rit = 0) {
@@ -74,8 +78,32 @@ void playSoundGameover() {
   ug(0, 4);
 }
 
+void playSoundTick() {
+  tone(pin_speaker, NOTE_C8);
+  delay(100);
+  noTone(pin_speaker);
+}
+
 void write7seg(int n) {
   for (int i = 0; i < 4; i++) digitalWrite(pin_7seg[i], (n >> i) & 1);
+}
+
+byte myShiftIn(int dataPin, int clockPin, int loadPin){
+
+  byte data;
+
+  digitalWrite(loadPin, LOW); //A-Hを格納
+  digitalWrite(loadPin, HIGH); //確定
+  
+  data = digitalRead(dataPin) << 7; //Hの値を読む
+  
+  for (int i=6; i>=0; i--){
+    digitalWrite(clockPin, HIGH);
+    data |= digitalRead(dataPin) << i; //G,F,E...Aの値を読む
+    digitalWrite(clockPin, LOW);
+  }
+
+  return data;
 }
 
 void gameover() {
@@ -95,28 +123,48 @@ void loop() {
     
   } else {
     
-    if (millis() / 1000 > timelimit) {
+    if (millis() / 1000 < timelimit) {
       timeLeft = timelimit - millis() / 1000;
       timeLeftMinutes = timeLeft / 60;
       timeLeftSeconds = timeLeft % 60;
+    } else {
+      gameover();
     }
-  
+
     if (cnt * dt % 1000 == 0) { // every 1000 ms
       int value;
+      byte data;
+      char buf[50];
       Serial.println(String(timeLeftMinutes) + ":" + String(timeLeftSeconds));
-      for (int i = 0; i < 4; i++) {
-        value = digitalRead(pin_buttons[i]);
-        if (!value) { // for test
-          gameover();
-          return;
+
+      for (int i=0; i<2; i++) {
+        byte data = myShiftIn(pin_sr_data[i], pin_sr_clk, pin_sr_load[i]);
+        byte id = data >> 6;
+        byte flags = data & 0b111111;
+        
+        Serial.print("Module" + String(i) + ": ");
+        for (int j=0; j<8; j++) {
+          Serial.print(String((data >> (7-j)) & 1));
         }
-        Serial.print(value + "\t");
+        Serial.println();
+
+        switch(data>>6) {
+          case 0:
+            if (flags == 0b111011) {
+              cleared[i] = true;
+            }
+          break;
+          case 1:
+            if (flags == 0b110100) {
+              cleared[i] = true;
+            }
+          break;
+        }
+        
       }
-  
-      for (int i = 0; i < 5; i++) {
-        value = digitalRead(pin_wires[i]);
-        Serial.print(value + "\t");
-      }
+      
+      //playSoundTick();
+      //cnt += 100;
     }
 
   }
