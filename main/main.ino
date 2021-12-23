@@ -1,3 +1,5 @@
+#include <Cth.h>
+
 #define NOTE_C4  262
 #define NOTE_CS4 277
 #define NOTE_D4  294
@@ -28,7 +30,7 @@ const int pin_line[] = {8, 9};
 const int pin_7seg[] = {13, 10, 11, 12};
 const int pin_speaker = 3;
 
-const int timelimit = 20; //599;
+const int timelimit = 5; //600;
 const int dt = 1;
 
 ui cnt = 0;
@@ -52,7 +54,7 @@ void ug(int f, float len, float rit = 0) {
   if (f == 0) noTone(3);
   else tone(pin_speaker, f); 
   a -= rit;
-  delay(60.0 / a / len * 1000);
+  Scheduler.delay(60.0 / a / len * 1000);
 }
 
 void playSoundGameover() {
@@ -80,7 +82,7 @@ void playSoundGameover() {
 
 void playSoundTick() {
   tone(pin_speaker, NOTE_C8);
-  delay(100);
+  Scheduler.delay(100);
   noTone(pin_speaker);
 }
 
@@ -111,30 +113,33 @@ void gameover() {
   flagGameover = true;
   for (int i=0; i<2; i++) cleared[i] = false;
   
-  playSoundGameover();
+  Scheduler.start(playSoundGameover);
   
 }
 
+int lastTimeLeft = 0;
+int timeLeft = 0;
+
 void loop() {
 
-  int timeLeft = 0, timeLeftMinutes = 0, timeLeftSeconds = 0;
+  int timeLeftMinutes = 0, timeLeftSeconds = 0;
 
   if (flagGameover) {
     
   } else {
     
-    if (millis() / 1000 < timelimit) {
-      timeLeft = timelimit - millis() / 1000;
+    if (millis() < timelimit * 1000) {
+      lastTimeLeft = timeLeft;
+      timeLeft = (timelimit * 1000 - millis()) / 1000;
       timeLeftMinutes = timeLeft / 60;
       timeLeftSeconds = timeLeft % 60;
     } else {
       gameover();
     }
 
-    if (cnt * dt % 1000 == 0) { // every 1000 ms
+    if (timeLeft != lastTimeLeft) { // every 1000 ms
       int value;
       byte data;
-      char buf[50];
       Serial.println(String(timeLeftMinutes) + ":" + String(timeLeftSeconds));
 
       for (int i=0; i<2; i++) {
@@ -163,7 +168,7 @@ void loop() {
         
       }
       
-      //playSoundTick();
+      Scheduler.start(playSoundTick);
       //cnt += 100;
     }
 
