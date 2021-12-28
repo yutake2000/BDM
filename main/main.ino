@@ -30,7 +30,7 @@ const int pin_line[] = {8, 9};
 const int pin_7seg[] = {13, 10, 11, 12};
 const int pin_speaker = 3;
 
-const ul timelimit = 600; //制限時間(s)
+const ul timelimit = 600-1; //制限時間(s)
 const int dt = 1;
 
 const bool mute = true; //スピーカーを鳴らすかどうかのフラグ
@@ -95,9 +95,10 @@ void write7seg(int n) {
 }
 
 //残り時間の記録
-int lastTimeLeft = 0;
-int timeLeft = 0;
+int lastTimeLeft = timelimit;
+int timeLeft = timelimit;
 
+//TImerの残り時間表示
 ui cnt_printTimer;
 void printTimer(){
   int timeLeftMinutes = timeLeft / 60;
@@ -110,7 +111,6 @@ void printTimer(){
   else if (cnt_printTimer % 4 == 2) write7seg(timeLeftSeconds / 10);
   else if (cnt_printTimer % 4 == 3) write7seg(timeLeftSeconds % 10);
   else write7seg(0);
-//  Serial.println("printTimer");
   cnt_printTimer = (cnt_printTimer + 1) % 4;
   Scheduler.delay(1);
 }
@@ -192,8 +192,10 @@ ul last_time_millis = 0UL;//1ミリ秒前の処理時刻を記録
 ui cnt = 0;
 
 void loop() {
-  Scheduler.yield();
-  ul time_millis = millis();
+  
+  Scheduler.yield();//Scheduler.startLoopで起動している処理を進める(?)
+  
+  ul time_millis = millis();//起動してからのミリ秒時間の表示
   int timeLeftMinutes = 0, timeLeftSeconds = 0;
 
   if(last_time_millis != time_millis){ //ミリ秒レベルで前の処理した時刻と異なるとき
@@ -202,12 +204,25 @@ void loop() {
     
   } else {
     
-    if (time_millis < timelimit * 1000) {//制限時間内である場合
-      lastTimeLeft = timeLeft;
-      timeLeft = (timelimit * 1000 - time_millis) / 1000;
-      timeLeftMinutes = timeLeft / 60;
-      timeLeftSeconds = timeLeft % 60;
-    } else {//制限時間を経過した場合
+//    if (time_millis < timelimit * 1000) {//制限時間内である場合
+//      lastTimeLeft = timeLeft;
+//      timeLeft = (timelimit * 1000 - time_millis) / 1000;
+//      timeLeftMinutes = timeLeft / 60;
+//      timeLeftSeconds = timeLeft % 60;
+//    } else {//制限時間を経過した場合
+//      gameover();
+//    }
+
+    //残り時間の更新処理
+    if(timeLeft > 0){//時間が残っているとき
+      if(time_millis % 1000 == 0){//カウント基準時間が経過したとき
+        timeLeft--;//残り時間を1引く
+//      Serial.println(String(timeLeft / 60) + ":" + String(timeLeft % 60));
+      
+      if (!mute) Scheduler.start(playSoundTick);//ビープ音を鳴らす
+      }
+      
+    }else{//時間切れ
       gameover();
     }
 
@@ -216,14 +231,14 @@ void loop() {
 //      Serial.println(String(millis()));
     }
 
-    if (timeLeft != lastTimeLeft) { // every 1000 ms
-      int value;
-      byte data;
-      Serial.println(String(timeLeftMinutes) + ":" + String(timeLeftSeconds));
-      
-      if (!mute) Scheduler.start(playSoundTick);
-      //cnt += 100;
-    }
+//    if (timeLeft != lastTimeLeft) { // every 1000 ms
+//      int value;
+//      byte data;
+//      Serial.println(String(timeLeftMinutes) + ":" + String(timeLeftSeconds));
+//      
+//      if (!mute) Scheduler.start(playSoundTick);//ビープ音を鳴らす
+//      //cnt += 100;
+//    }
 
   }
   
