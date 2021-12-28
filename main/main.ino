@@ -30,7 +30,7 @@ const int pin_line[] = {8, 9};
 const int pin_7seg[] = {13, 10, 11, 12};
 const int pin_speaker = 3;
 
-const ul timelimit = 600;
+const ul timelimit = 600; //制限時間(s)
 const int dt = 1;
 
 const bool mute = true; //スピーカーを鳴らすかどうかのフラグ
@@ -168,20 +168,22 @@ void loop() {
 
   int timeLeftMinutes = 0, timeLeftSeconds = 0;
 
+  ui time_millis = millis();
+
   if (flagGameover) {
     
   } else {
     
-    if (millis() < timelimit * 1000) {
+    if (millis() < timelimit * 1000) {//制限時間内である場合
       lastTimeLeft = timeLeft;
       timeLeft = (timelimit * 1000 - millis()) / 1000;
       timeLeftMinutes = timeLeft / 60;
       timeLeftSeconds = timeLeft % 60;
-    } else {
+    } else {//制限時間を経過した場合
       gameover();
     }
 
-    if (cnt % 100 == 0) {
+    if (cnt % 100 == 0) {//100msごとにモジュールのデータを取得
       readModuleData();
     }
 
