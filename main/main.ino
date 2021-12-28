@@ -35,7 +35,7 @@ const int dt = 1;
 
 const bool mute = true; //スピーカーを鳴らすかどうかのフラグ
 
-ui cnt = 0;
+
 bool cleared[] = {false, false};
 bool flagGameover = false;
 
@@ -49,6 +49,8 @@ void setup() {
   for (int i = 0; i < 4; i++) pinMode(pin_7seg[i], OUTPUT);
   pinMode(pin_speaker, OUTPUT);
   Serial.begin(9600);
+
+  Scheduler.startLoop(printTimer);
 }
 
 void ug(int f, float len, float rit = 0) {
@@ -92,6 +94,27 @@ void write7seg(int n) {
   for (int i = 0; i < 4; i++) digitalWrite(pin_7seg[i], (n >> i) & 1);
 }
 
+//残り時間の記録
+int lastTimeLeft = 0;
+int timeLeft = 0;
+
+ui cnt_printTimer;
+void printTimer(){
+  int timeLeftMinutes = timeLeft / 60;
+  int timeLeftSeconds = timeLeft % 60;
+  //点灯させる７セグLEDの指定
+  for (int i = 0; i < 2; i++) digitalWrite(pin_line[i], (cnt_printTimer >> i) & 1);
+  //点灯させる内容の指定
+  if (cnt_printTimer % 4 == 0) write7seg(timeLeftMinutes % 10);
+  else if (cnt_printTimer % 4 == 1) write7seg(2); // display ":"
+  else if (cnt_printTimer % 4 == 2) write7seg(timeLeftSeconds / 10);
+  else if (cnt_printTimer % 4 == 3) write7seg(timeLeftSeconds % 10);
+  else write7seg(0);
+//  Serial.println("printTimer");
+  cnt_printTimer = (cnt_printTimer + 1) % 4;
+  Scheduler.delay(1);
+}
+
 byte myShiftIn(int dataPin, int clockPin, int loadPin){
 
   byte data;
@@ -125,8 +148,7 @@ void blinkLED(int pin) {
   digitalWrite(pin, 0);
 }
 
-int lastTimeLeft = 0;
-int timeLeft = 0;
+
 
 byte lastData[] = {0, 0};
 
@@ -164,19 +186,25 @@ void readModuleData() {
   }
 }
 
-void loop() {
 
+
+ul last_time_millis = 0UL;//1ミリ秒前の処理時刻を記録
+ui cnt = 0;
+
+void loop() {
+  Scheduler.yield();
+  ul time_millis = millis();
   int timeLeftMinutes = 0, timeLeftSeconds = 0;
 
-  ui time_millis = millis();
+  if(last_time_millis != time_millis){ //ミリ秒レベルで前の処理した時刻と異なるとき
 
   if (flagGameover) {
     
   } else {
     
-    if (millis() < timelimit * 1000) {//制限時間内である場合
+    if (time_millis < timelimit * 1000) {//制限時間内である場合
       lastTimeLeft = timeLeft;
-      timeLeft = (timelimit * 1000 - millis()) / 1000;
+      timeLeft = (timelimit * 1000 - time_millis) / 1000;
       timeLeftMinutes = timeLeft / 60;
       timeLeftSeconds = timeLeft % 60;
     } else {//制限時間を経過した場合
@@ -185,6 +213,7 @@ void loop() {
 
     if (cnt % 100 == 0) {//100msごとにモジュールのデータを取得
       readModuleData();
+//      Serial.println(String(millis()));
     }
 
     if (timeLeft != lastTimeLeft) { // every 1000 ms
@@ -202,16 +231,21 @@ void loop() {
     if (cleared[i]) digitalWrite(pin_LEDs[i], cleared[i]);
   }
 
-  for (int i = 0; i < 2; i++) digitalWrite(pin_line[i], (cnt >> i) & 1);
-
-  if (cnt % 4 == 0) write7seg(timeLeftMinutes);
-  else if (cnt % 4 == 1) write7seg(2); // display ":"
-  else if (cnt % 4 == 2) write7seg(timeLeftSeconds / 10);
-  else if (cnt % 4 == 3) write7seg(timeLeftSeconds % 10);
-  else write7seg(0);
+//  //点灯させる７セグLEDの指定
+//  for (int i = 0; i < 2; i++) digitalWrite(pin_line[i], (cnt >> i) & 1);
+//  //点灯させる内容の指定
+//  if (cnt % 4 == 0) write7seg(timeLeftMinutes % 10);
+//  else if (cnt % 4 == 1) write7seg(2); // display ":"
+//  else if (cnt % 4 == 2) write7seg(timeLeftSeconds / 10);
+//  else if (cnt % 4 == 3) write7seg(timeLeftSeconds % 10);
+//  else write7seg(0);
 
   cnt++;
+  last_time_millis = time_millis; //前に処理した時刻を記録
+  } else {
 
-  delay(dt);
+    
+  }
+//  delay(dt);
   
 }
