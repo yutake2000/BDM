@@ -35,7 +35,7 @@ const int pin_speaker = 3;
 const ul timelimit = 600 - 1; //制限時間(s)
 const int dt = 1;
 
-const bool mute = true; //スピーカーを鳴らすかどうかのフラグ
+const bool mute = false; //スピーカーを鳴らすかどうかのフラグ
 
 
 bool cleared[] = {false, false};
