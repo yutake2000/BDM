@@ -54,7 +54,7 @@ void setup() {
   pinMode(pin_speaker, OUTPUT);
   Serial.begin(9600);
 
-  Scheduler.startLoop(printTimer);
+  Scheduler.startLoop(printTimer);//タイマーの表示処理の設定
 }
 
 void ug(int f, float len, float rit = 0) {
@@ -137,6 +137,7 @@ byte myShiftIn(int dataPin, int clockPin, int loadPin){
   return data;
 }
 
+//ゲームオーバー時の処理
 void gameover() {
 
   flagGameover = true;
@@ -144,6 +145,11 @@ void gameover() {
   
   Scheduler.start(playSoundGameover);
   
+}
+
+//ゲームクリア時の処理
+void gameclear() {
+  flagGameover = true;
 }
 
 void blinkLED(int pin) {
@@ -235,6 +241,11 @@ void loop() {
 
     if (time_millis % 50 == 0) {//50msごとにモジュールのデータを取得
       readModuleData();
+    }
+
+    //クリア判定
+    if(cleared[0] & cleared[1]){
+      gameclear();
     }
     
   }
