@@ -18,6 +18,8 @@
 
 #define NOTE_C8  4186
 
+#define DEBUG true
+
 typedef unsigned long ul;
 typedef unsigned int ui;
 
@@ -38,6 +40,8 @@ const bool mute = true; //スピーカーを鳴らすかどうかのフラグ
 
 bool cleared[] = {false, false};
 bool flagGameover = false;
+
+int timer_basis = 1000; //タイマーのカウントを1減らすまでの時間(ms)
 
 void setup() {
   pinMode(pin_sr_clk, OUTPUT);
@@ -152,6 +156,7 @@ void blinkLED(int pin) {
 
 byte lastData[] = {0, 0};
 
+//モジュールからの信号を受け取る
 void readModuleData() {
   for (int i=0; i<2; i++) {
     byte data = myShiftIn(pin_sr_data[i], pin_sr_clk, pin_sr_load[i]);
@@ -166,6 +171,8 @@ void readModuleData() {
     Serial.println();
     */
 
+    //モジュールからのデータを処理する
+
     switch(id) {
       case 0: // wires
         if (flags == 0b111011) {
@@ -175,6 +182,9 @@ void readModuleData() {
       case 1: // buttons
         if (flags == 0b110100) {
           cleared[i] = true;
+        }
+        if(flags == 0b101100) {
+          timer_basis = 500;
         }
         if (lastData[i] & (lastData[i] ^ data)) { // negedge data[x]
           Scheduler.start(blinkLED, pin_LEDs[i]);
@@ -189,7 +199,7 @@ void readModuleData() {
 
 
 ul last_time_millis = 0UL;//1ミリ秒前の処理時刻を記録
-ui cnt = 0;
+//ui cnt = 0;
 
 void loop() {
   
@@ -200,24 +210,21 @@ void loop() {
 
   if(last_time_millis != time_millis){ //ミリ秒レベルで前の処理した時刻と異なるとき
 
-  if (flagGameover) {
+  if (flagGameover) {//ゲーム終了後のループ処理
     
-  } else {
+  } else {//ゲーム中のループ処理
     
-//    if (time_millis < timelimit * 1000) {//制限時間内である場合
-//      lastTimeLeft = timeLeft;
-//      timeLeft = (timelimit * 1000 - time_millis) / 1000;
-//      timeLeftMinutes = timeLeft / 60;
-//      timeLeftSeconds = timeLeft % 60;
-//    } else {//制限時間を経過した場合
-//      gameover();
-//    }
 
     //残り時間の更新処理
     if(timeLeft > 0){//時間が残っているとき
-      if(time_millis % 1000 == 0){//カウント基準時間が経過したとき
+      if(time_millis % timer_basis < last_time_millis % timer_basis){//カウント基準時間が経過したとき
+        //!計算量が若干多い
+        //意図としては、ちょうど経過したタイミングに重い処理が走っていても時刻経過の判定を出せるようにするため
+        
         timeLeft--;//残り時間を1引く
-//      Serial.println(String(timeLeft / 60) + ":" + String(timeLeft % 60));
+
+        //時間が進んだ時に走らせる処理
+        if(DEBUG)Serial.println(String(timeLeft / 60) + ":" + String(timeLeft % 60));
       
       if (!mute) Scheduler.start(playSoundTick);//ビープ音を鳴らす
       }
@@ -226,38 +233,19 @@ void loop() {
       gameover();
     }
 
-    if (cnt % 100 == 0) {//100msごとにモジュールのデータを取得
+    if (time_millis % 50 == 0) {//50msごとにモジュールのデータを取得
       readModuleData();
-//      Serial.println(String(millis()));
     }
-
-//    if (timeLeft != lastTimeLeft) { // every 1000 ms
-//      int value;
-//      byte data;
-//      Serial.println(String(timeLeftMinutes) + ":" + String(timeLeftSeconds));
-//      
-//      if (!mute) Scheduler.start(playSoundTick);//ビープ音を鳴らす
-//      //cnt += 100;
-//    }
-
+    
   }
   
   for (int i = 0; i < 2; i++) {
     if (cleared[i]) digitalWrite(pin_LEDs[i], cleared[i]);
   }
 
-//  //点灯させる７セグLEDの指定
-//  for (int i = 0; i < 2; i++) digitalWrite(pin_line[i], (cnt >> i) & 1);
-//  //点灯させる内容の指定
-//  if (cnt % 4 == 0) write7seg(timeLeftMinutes % 10);
-//  else if (cnt % 4 == 1) write7seg(2); // display ":"
-//  else if (cnt % 4 == 2) write7seg(timeLeftSeconds / 10);
-//  else if (cnt % 4 == 3) write7seg(timeLeftSeconds % 10);
-//  else write7seg(0);
-
-  cnt++;
+//  cnt++;
   last_time_millis = time_millis; //前に処理した時刻を記録
-  } else {
+  } else {  //ims経過する前に走らせる処理
 
     
   }
