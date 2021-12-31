@@ -43,6 +43,8 @@ bool flagGameover = false;
 
 int timer_basis = 1000; //タイマーのカウントを1減らすまでの時間(ms)
 
+bool miss_flag = false; //ミス時の特殊処理への移行フラグ
+
 void setup() {
   pinMode(pin_sr_clk, OUTPUT);
   for (int i = 0; i < 2; i++) pinMode(pin_sr_data[i], INPUT);
@@ -91,6 +93,13 @@ void playSoundGameover() {
 void playSoundTick() {
   tone(pin_speaker, NOTE_C8);
   Scheduler.delay(100);
+  if(!miss_flag)noTone(pin_speaker);//ミスしたときのビープ音を止めないため
+}
+
+//
+void playBeep(int soundms) {
+  tone(pin_speaker, NOTE_C4);
+  Scheduler.delay(soundms);
   noTone(pin_speaker);
 }
 
@@ -193,6 +202,7 @@ void readModuleData() {
         }
         if (flags == 0b101100) {
           timer_basis = 500;
+          miss_flag = true;
         }
         if (lastData[i] & (lastData[i] ^ data)) { // negedge data[x]
           Scheduler.start(blinkLED, pin_LEDs[i]);
@@ -209,16 +219,36 @@ void readModuleData() {
 ul last_time_millis = 0UL;//1ミリ秒前の処理時刻を記録
 //ui cnt = 0;
 
+ui cnt_miss = 0;//ミス時のフラグ管理
+
 void loop() {
 
   Scheduler.yield();//Scheduler.startLoopで起動している処理を進める(?)
 
-  ul time_millis = millis();//起動してからのミリ秒時間の表示
-  int timeLeftMinutes = 0, timeLeftSeconds = 0;
+  ul time_millis = millis();//起動してからのミリ秒時間の記録
+  //  int timeLeftMinutes = 0, timeLeftSeconds = 0;
 
   if (last_time_millis != time_millis) { //ミリ秒レベルで前の処理した時刻と異なるとき
 
     if (flagGameover) {//ゲーム終了後のループ処理
+
+    } else if (miss_flag) { //間違い時の特殊処理
+      if(cnt_miss == 0){
+        if(!mute)Scheduler.start(playBeep, 800);
+        cnt_miss = 1;
+      }
+      else if(cnt_miss == 1100){//ミスしてから1100ms経過
+        //ミスに関する諸フラグを下す
+        miss_flag = false;
+        cnt_miss = 0;
+      }else{
+        ++cnt_miss;
+        //何もしない
+      }
+        
+//      delay(1000);
+       last_time_millis = time_millis; //前に処理した時刻を記録
+      
 
     } else {//ゲーム中のループ処理
 
