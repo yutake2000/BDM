@@ -32,7 +32,7 @@ const int pin_line[] = {8, 9};
 const int pin_7seg[] = {13, 10, 11, 12};
 const int pin_speaker = 3;
 
-const ul timelimit = 60*10 - 1; //制限時間(s)
+const ul timelimit = 60 * 10 - 1; //制限時間(s)
 const int dt = 1;
 
 const bool mute = true; //スピーカーを鳴らすかどうかのフラグ
@@ -93,7 +93,7 @@ void playSoundGameover() {
 void playSoundTick() {
   tone(pin_speaker, NOTE_C8);
   Scheduler.delay(100);
-  if(!miss_flag)noTone(pin_speaker);//ミスしたときのビープ音を止めないため
+  if (!miss_flag)noTone(pin_speaker); //ミスしたときのビープ音を止めないため
 }
 
 //
@@ -172,6 +172,7 @@ void blinkLED(int pin) {
 
 
 byte lastData[] = {0, 0};
+int button_state = 0; //buttonモジュールの状態取得
 
 //モジュールからの信号を受け取る
 void readModuleData() {
@@ -180,36 +181,37 @@ void readModuleData() {
     byte id = data >> 6;
     byte flags = data & 0b111111;
 
-    /*
-      Serial.print("Module" + String(i) + ": ");
-      for (int j=0; j<8; j++) {
-      Serial.print(String((data >> (7-j)) & 1));
-      }
-      Serial.println();
-    */
+
+    //      Serial.print("Module" + String(i) + ": ");
+    //      for (int j=0; j<8; j++) {
+    //      Serial.print(String((data >> (7-j)) & 1));
+    //      }
+    //      Serial.println();
 
     //モジュールからのデータを処理する
+    //TODO:クリアしているときには処理を受け付けない
+    if (!cleared[i]) {
+      switch (id) {
+        case 0: // wires
 
-    switch (id) {
-      case 0: // wires
-        if (flags == 0b111011) {
-          cleared[i] = true;
-        }
-        break;
-      case 1: // buttons
-        if (flags == 0b110100) {
-          cleared[i] = true;
-        }
-        if (flags == 0b101100) {
-          timer_basis = 500;
-          miss_flag = true;
-        }
-        if (lastData[i] & (lastData[i] ^ data)) { // negedge data[x]
-          Scheduler.start(blinkLED, pin_LEDs[i]);
-        }
-        break;
+          if (flags == 0b111011) {
+            cleared[i] = true;
+          }
+          break;
+        case 1: // buttons
+          if (flags == 0b110100) {
+            cleared[i] = true;
+          }
+          if (flags == 0b101100) {
+            timer_basis = 500;
+            miss_flag = true;
+          }
+          if (lastData[i] & (lastData[i] ^ data)) { // negedge data[x]
+            Scheduler.start(blinkLED, pin_LEDs[i]);
+          }
+          break;
+      }
     }
-
     lastData[i] = data;
   }
 }
@@ -233,22 +235,22 @@ void loop() {
     if (flagGameover) {//ゲーム終了後のループ処理
 
     } else if (miss_flag) { //間違い時の特殊処理
-      if(cnt_miss == 0){
-        if(!mute)Scheduler.start(playBeep, 800);
+      if (cnt_miss == 0) {
+        if (!mute)Scheduler.start(playBeep, 800);
         cnt_miss = 1;
       }
-      else if(cnt_miss == 1100){//ミスしてから1100ms経過
+      else if (cnt_miss == 1100) { //ミスしてから1100ms経過
         //ミスに関する諸フラグを下す
         miss_flag = false;
         cnt_miss = 0;
-      }else{
+      } else {
         ++cnt_miss;
         //何もしない
       }
-        
-//      delay(1000);
-       last_time_millis = time_millis; //前に処理した時刻を記録
-      
+
+      //      delay(1000);
+      last_time_millis = time_millis; //前に処理した時刻を記録
+
 
     } else {//ゲーム中のループ処理
 
