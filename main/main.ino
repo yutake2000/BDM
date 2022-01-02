@@ -18,11 +18,15 @@
 
 #define NOTE_C8  4186
 
+#define WIRE_SAFE 0b010011
+
 #define BUTTONS_NOPUSH 0b111100
 #define BUTTONS_E 0b011100
 #define BUTTONS_I 0b110100
 #define BUTTONS_C 0b101100
 #define BUTTONS_D 0b111000
+
+
 
 #define DEBUG true
 
@@ -179,7 +183,7 @@ void blinkLED(int pin) {
 
 
 
-byte lastData[] = {0, 0};
+byte lastData[] = {0b111111,0b111111};
 int button_state = 0; //buttonモジュールの状態取得
 
 //モジュールからの信号を受け取る
@@ -200,11 +204,16 @@ void readModuleData() {
 
     if (!cleared[i]) {//未クリアの時のみ受け付ける
       switch (id) {
-        case 0: // wires
-
-          if (flags == 0b111011) {
-            cleared[i] = true;
-          }
+        case 0: //wire
+          byte cut;
+          cut = (lastData[i] ^ data) & data ;//切断されたワイヤーを検出
+          //NGワイヤーの切断を検出
+          if(cut & ~(WIRE_SAFE))miss_flag = true ;
+//          if (flags == 0b111011) {
+//            cleared[i] = true;
+//          }
+//SAFEワイヤーがすべて切られた(切られていた)とき
+          if(data & WIRE_SAFE==WIRE_SAFE)cleared[i]=true;
           break;
         case 1: // buttons
           switch (button_state) {
