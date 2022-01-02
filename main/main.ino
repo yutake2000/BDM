@@ -213,7 +213,7 @@ void readModuleData() {
 //            cleared[i] = true;
 //          }
 //SAFEワイヤーがすべて切られた(切られていた)とき
-          if(data & WIRE_SAFE==WIRE_SAFE)cleared[i]=true;
+          if((data & WIRE_SAFE)==WIRE_SAFE)cleared[i]=true;
           break;
         case 1: // buttons
           switch (button_state) {
