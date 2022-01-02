@@ -247,12 +247,7 @@ void readModuleData() {
               }
               break;
           }
-          //          if (flags == 0b110100) {
-          //            cleared[i] = true;
-          //          }
-          //          if (flags == 0b101100) {
-          //            miss_flag = true;
-          //          }
+
           if (lastData[i] & (lastData[i] ^ data)) { // negedge data[x]
             Scheduler.start(blinkLED, pin_LEDs[i]);
           }
@@ -275,7 +270,7 @@ void loop() {
   Scheduler.yield();//Scheduler.startLoopで起動している処理を進める(?)
 
   ul time_millis = millis();//起動してからのミリ秒時間の記録
-  //  int timeLeftMinutes = 0, timeLeftSeconds = 0;
+
 
   if (last_time_millis != time_millis) { //ミリ秒レベルで前の処理した時刻と異なるとき
 
@@ -296,7 +291,7 @@ void loop() {
         //何もしない
       }
 
-      //      delay(1000);
+
       last_time_millis = time_millis; //前に処理した時刻を記録
 
 
@@ -342,6 +337,5 @@ void loop() {
 
 
   }
-  //  delay(dt);
 
 }
