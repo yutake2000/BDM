@@ -18,6 +18,12 @@
 
 #define NOTE_C8  4186
 
+#define BUTTONS_NOPUSH 0b111100
+#define BUTTONS_E 0b011100
+#define BUTTONS_I 0b110100
+#define BUTTONS_C 0b101100
+#define BUTTONS_D 0b111000
+
 #define DEBUG true
 
 typedef unsigned long ul;
@@ -35,7 +41,7 @@ const int pin_speaker = 3;
 const ul timelimit = 60 * 10 - 1; //制限時間(s)
 const int dt = 1;
 
-const bool mute = true; //スピーカーを鳴らすかどうかのフラグ
+const bool mute = false; //スピーカーを鳴らすかどうかのフラグ
 
 
 bool cleared[] = {false, false};
@@ -92,7 +98,8 @@ void playSoundGameover() {
 
 void playSoundTick() {
   tone(pin_speaker, NOTE_C8);
-  Scheduler.delay(100);
+  if (timer_basis > 100)Scheduler.delay(100);
+  else Scheduler.delay(timer_basis * 0.75);
   if (!miss_flag)noTone(pin_speaker); //ミスしたときのビープ音を止めないため
 }
 
@@ -166,6 +173,7 @@ void gameclear() {
 void blinkLED(int pin) {
   digitalWrite(pin, 1);
   Scheduler.delay(100);
+
   digitalWrite(pin, 0);
 }
 
@@ -189,7 +197,7 @@ void readModuleData() {
     //      Serial.println();
 
     //モジュールからのデータを処理する
-    //TODO:クリアしているときには処理を受け付けない
+
     if (!cleared[i]) {
       switch (id) {
         case 0: // wires
@@ -199,13 +207,52 @@ void readModuleData() {
           }
           break;
         case 1: // buttons
-          if (flags == 0b110100) {
-            cleared[i] = true;
+          switch (button_state) {
+            case 0://初期状態
+              if (flags == BUTTONS_NOPUSH); //何も押されていないとき。何もしない
+              else if (flags == BUTTONS_E) button_state = 1;
+              else miss_flag = true;//間違ったものを押したとき
+              break;
+            case 1:
+              if (flags == BUTTONS_NOPUSH) button_state = 2;
+              break;
+            case 2:
+              if (flags == BUTTONS_NOPUSH); //何も押されていないとき。何もしない
+              else if (flags == BUTTONS_E) button_state = 3;
+              else {//間違ったものを押したとき
+                miss_flag = true;
+                button_state = 0;
+              }
+              break;
+            case 3:
+              if (flags == BUTTONS_NOPUSH) button_state = 4;
+              break;
+            case 4:
+              if (flags == BUTTONS_NOPUSH); //何も押されていないとき。何もしない
+              else if (flags == BUTTONS_I) button_state = 5;
+              else {//間違ったものを押したとき
+                miss_flag = true;
+                button_state = 0;
+              }
+              break;
+            case 5:
+              if (flags == BUTTONS_NOPUSH) button_state = 6;
+              break;
+            case 6:
+              if (flags == BUTTONS_NOPUSH); //何も押されていないとき。何もしない
+              else if (flags == BUTTONS_C) cleared[i] = true;
+              else {//間違ったものを押したとき
+                miss_flag = true;
+                button_state = 0;
+              }
+              break;
           }
-          if (flags == 0b101100) {
-            timer_basis = 500;
-            miss_flag = true;
-          }
+          //          if (flags == 0b110100) {
+          //            cleared[i] = true;
+          //          }
+          //          if (flags == 0b101100) {
+          //            miss_flag = true;
+          //          }
           if (lastData[i] & (lastData[i] ^ data)) { // negedge data[x]
             Scheduler.start(blinkLED, pin_LEDs[i]);
           }
@@ -236,10 +283,11 @@ void loop() {
 
     } else if (miss_flag) { //間違い時の特殊処理
       if (cnt_miss == 0) {
-        if (!mute)Scheduler.start(playBeep, 800);
+        if (!mute)Scheduler.start(playBeep, 800);//ミス時のビープ音を鳴らす
+        if (timer_basis > 100)timer_basis = timer_basis - 100; //間違えるごとに早くなっていく
         cnt_miss = 1;
       }
-      else if (cnt_miss == 1100) { //ミスしてから1100ms経過
+      else if (cnt_miss == 1100) { //ミスしてから約1100ms経過
         //ミスに関する諸フラグを下す
         miss_flag = false;
         cnt_miss = 0;
