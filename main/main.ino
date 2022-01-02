@@ -198,7 +198,7 @@ void readModuleData() {
 
     //モジュールからのデータを処理する
 
-    if (!cleared[i]) {
+    if (!cleared[i]) {//未クリアの時のみ受け付ける
       switch (id) {
         case 0: // wires
 
