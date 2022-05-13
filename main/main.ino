@@ -42,10 +42,10 @@ const int pin_line[] = {8, 9};
 const int pin_7seg[] = {13, 10, 11, 12};
 const int pin_speaker = 3;
 
-const ul timelimit = 60 * 10 - 1; //制限時間(s)
+const ul timelimit = 60 * 3 - 0; //制限時間(s)
 const int dt = 1;
 
-const bool mute = false; //スピーカーを鳴らすかどうかのフラグ
+const bool mute = false; //スピーカーを止めるどうかのフラグ。trueで無音
 
 
 bool cleared[] = {false, false};
